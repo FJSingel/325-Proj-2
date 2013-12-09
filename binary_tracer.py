@@ -5,13 +5,38 @@ FJS52@case.edu
 This module measures the TTL and hop count to a remote host
 """
 
-# from struct import unpack
+import math
 import socket
 import sys
 import time
 
+import freegeoip
+
+
+def gethostIP():
+	"""This returns the public IP address from where this is being called"""
+	icmp = socket.getprotobyname("icmp")
+	udp = socket.getprotobyname("udp")
+	recv_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, icmp)
+	send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, udp)
+	send_socket.setsockopt(socket.SOL_IP, socket.IP_TTL, 1)
+	recv_socket.bind(("", 33434))
+	recv_socket.settimeout(10)
+	send_socket.sendto("", ("google.com", 33434))
+	_, curr_addr = recv_socket.recvfrom(1024)
+	return curr_addr[0]
+
+def haversine(lat1, lat2, lon1, lon2):
+	"""
+	Calculates the haversine distance between 2 points
+	d = asin(sqrt(sin2((lat2-lat1)/2)+cos(lat1)cos(lat2)sin2((long2-long1)/2)))
+	"""
+	pass
+
+
 def main(dest_name):
 	port = 33434
+	source_addr = gethostIP()
 	dest_addr = socket.gethostbyname(dest_name)
 	icmp = socket.getprotobyname("icmp")
 	udp = socket.getprotobyname("udp")
@@ -22,6 +47,7 @@ def main(dest_name):
 	RTT = 0
 	found = False
 
+	print "Source: %s" % (source_addr)
 	print "Destination: %s" % (dest_addr)
 
 	# while True:
@@ -162,27 +188,19 @@ def main(dest_name):
 				if min_hops+1 == max_hops: #Binary search over. Now return 
 					print "RTT = %sms" % (RTT)
 					print "TTL = %s hops" % (max_hops)
+					response = freegeoip.get_geodata(source_addr)
+					print "\nSource Location: %s" % source_addr
+					print "Source Latitude: %s" % response["latitude"]
+					print "Source Longitude: %s" % response["longitude"]
+					response = freegeoip.get_geodata(dest_addr)
+					print "\nDestination Location: %s" % dest_addr
+					print "Destination Latitude: %s" % response["latitude"]
+					print "Destination Longitude: %s" % response["longitude"]
 					break
 
-
-
 if __name__ == "__main__":
-	# main("google.com")
 	main(sys.argv[1])
 
-	# HOST = "google.com"	#remote host name
-	# PORT = 9001
-
-	# s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	# s.connect((HOST, PORT))
-	# s.sendall('Hello, world')
-	# data = s.recv(1024)
-	# s.close()
-	# print 'Received', repr(data)
-
-	# print socket.SOCK_DGRAM
-	# #setsockopt() to change TTL field of datagram
-	# #send it with socket.sendto()
 	"""
 	Questions:
 	1. How do you know if your TTL is too small?
@@ -193,7 +211,8 @@ if __name__ == "__main__":
 		then you know it's somewhere in that range. Search this range recursively.
 
 	3. How do you match ICMP responses with probes?
-		.
+		You just match the IP addresses. ICMP datagrams also contain the original UDP packet that
+		was sent to it.
 
 	4. List reasons you might not get an answer.
 		Data Corruption
