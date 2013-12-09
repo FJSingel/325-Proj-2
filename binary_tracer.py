@@ -12,7 +12,6 @@ import time
 
 import freegeoip
 
-
 def gethostIP():
 	"""This returns the public IP address from where this is being called"""
 	icmp = socket.getprotobyname("icmp")
@@ -26,12 +25,27 @@ def gethostIP():
 	_, curr_addr = recv_socket.recvfrom(1024)
 	return curr_addr[0]
 
-def haversine(lat1, lat2, lon1, lon2):
+def haversine(lat1, lon1, lat2, lon2):
 	"""
-	Calculates the haversine distance between 2 points
+	Calculates the haversine distance between 2 points in km
 	d = asin(sqrt(sin2((lat2-lat1)/2)+cos(lat1)cos(lat2)sin2((long2-long1)/2)))
 	"""
-	pass
+	# lat = math.sin(math.sin((lat2/180-lat1/180)/2))
+	# lon = math.cos(lat1/180)*math.cos(lat2/180)*math.sin(math.sin((lon2/180-lon1/180)/2))
+	# print lat
+	# print lon
+	# d = 2*6371*math.asin(math.sqrt(math.fabs(lat+lon)))
+	# print d
+	r = 6371 #in km
+	dlat = math.radians(lat2-lat1)
+	dlon = math.radians(lon2-lon1)
+	lat1 = math.radians(lat1)
+	lat2 = math.radians(lat2)
+	a = (math.sin(dlat/2) * math.sin(dlat/2) + 
+		math.sin(dlon/2) * math.sin(dlon/2) * math.cos(lat1) * math.cos(lat2))
+	c = 2*math.atan2(math.sqrt(a), math.sqrt(1-a))
+	d = r * c
+	return d
 
 
 def main(dest_name):
@@ -188,14 +202,19 @@ def main(dest_name):
 				if min_hops+1 == max_hops: #Binary search over. Now return 
 					print "RTT = %sms" % (RTT)
 					print "TTL = %s hops" % (max_hops)
-					response = freegeoip.get_geodata(source_addr)
+					src_response = freegeoip.get_geodata(source_addr)
 					print "\nSource Location: %s" % source_addr
-					print "Source Latitude: %s" % response["latitude"]
-					print "Source Longitude: %s" % response["longitude"]
-					response = freegeoip.get_geodata(dest_addr)
+					print "Source Latitude: %s" % src_response["latitude"]
+					print "Source Longitude: %s" % src_response["longitude"]
+
+					dst_response = freegeoip.get_geodata(dest_addr)
 					print "\nDestination Location: %s" % dest_addr
-					print "Destination Latitude: %s" % response["latitude"]
-					print "Destination Longitude: %s" % response["longitude"]
+					print "Destination Latitude: %s" % dst_response["latitude"]
+					print "Destination Longitude: %s" % dst_response["longitude"]
+					print "Distance: %skm" % haversine(float(src_response["latitude"]),
+														float(src_response["longitude"]), 
+														float(dst_response["latitude"]),
+														float(dst_response["longitude"]))
 					break
 
 if __name__ == "__main__":
